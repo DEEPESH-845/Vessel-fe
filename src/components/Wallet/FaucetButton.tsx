@@ -99,10 +99,19 @@ export default function FaucetButton() {
       });
       await refreshCooldown();
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Faucet failed";
+      
+      // Check if error is due to backend being unavailable
+      const isBackendError = errorMessage.includes("Signer API unreachable") || 
+                            errorMessage.includes("network error") ||
+                            errorMessage.includes("fetch failed");
+      
       setErrorModal({
         isOpen: true,
         title: "Faucet Error",
-        message: err instanceof Error ? err.message : "Faucet failed",
+        message: isBackendError 
+          ? "Backend signer service is not running. Please start the backend at http://localhost:3001 or use the direct faucet method (requires gas)."
+          : errorMessage,
       });
     } finally {
       setIsClaiming(false);
