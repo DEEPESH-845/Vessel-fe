@@ -7,16 +7,17 @@ const requireEnv = (value: string | undefined, name: string) => {
   return value;
 };
 
+// IDRX API configuration - optional for testnet faucet mode
+// When not configured, transaction history will return empty results
 export const idrxEnv = {
-  apiKey: requireEnv(process.env.IDRX_API_KEY, "IDRX_API_KEY"),
-  secretKey: requireEnv(process.env.IDRX_SECRET_KEY, "IDRX_SECRET_KEY"),
-  baseUrl: requireEnv(process.env.IDRX_BASE_URL, "IDRX_BASE_URL"),
-  networkChainId: requireEnv(
-    process.env.IDRX_NETWORK_CHAIN_ID,
-    "IDRX_NETWORK_CHAIN_ID",
-  ),
-  networkChainIdEtherlink: requireEnv(
-    process.env.IDRX_NETWORK_CHAIN_ID_ETHERLINK,
-    "IDRX_NETWORK_CHAIN_ID_ETHERLINK",
+  apiKey: process.env.IDRX_API_KEY || "",
+  secretKey: process.env.IDRX_SECRET_KEY || "",
+  baseUrl: process.env.IDRX_BASE_URL || "",
+  networkChainId: process.env.IDRX_NETWORK_CHAIN_ID || "",
+  networkChainIdEtherlink: process.env.IDRX_NETWORK_CHAIN_ID_ETHERLINK || "",
+  isConfigured: Boolean(
+    process.env.IDRX_API_KEY &&
+    process.env.IDRX_SECRET_KEY &&
+    process.env.IDRX_BASE_URL
   ),
 };

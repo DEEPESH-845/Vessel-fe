@@ -61,7 +61,6 @@ export default function TopUpIDRX() {
   const [amount, setAmount] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
-  const [reference, setReference] = useState<string | null>(null);
 
   const [history, setHistory] = useState<IdRxTransaction[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
@@ -91,10 +90,6 @@ export default function TopUpIDRX() {
   const isAboveMax = hasValidAmount && numericAmount > limits.max;
   const isOutOfRange = isBelowMin || isAboveMax;
 
-  if (!activeToken) {
-    return null;
-  }
-
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -110,7 +105,6 @@ export default function TopUpIDRX() {
 
   useEffect(() => {
     setPaymentUrl(null);
-    setReference(null);
   }, [topUpToken]);
 
   useEffect(() => {
@@ -200,6 +194,8 @@ export default function TopUpIDRX() {
 
     setIsSubmitting(true);
     try {
+      // Convert amount to IDRX if user selected USDC
+      // This uses the StablecoinRegistry contract to get the conversion rate
       let amountToMint = amount;
       if (!activeToken) {
         throw new Error("Token configuration is missing.");
@@ -209,7 +205,9 @@ export default function TopUpIDRX() {
         if (!idrxToken) {
           throw new Error("IDRX token configuration is missing.");
         }
+        // Parse amount to smallest unit (6 decimals for USDC)
         const amountRaw = parseUnits(amount, activeToken.decimals);
+        // Convert USDC to IDRX using on-chain conversion rate
         const converted = (await publicClient.readContract({
           address: config.stablecoinRegistryAddress,
           abi: STABLECOIN_REGISTRY_ABI,
@@ -220,35 +218,40 @@ export default function TopUpIDRX() {
             amountRaw,
           ],
         })) as bigint;
+        // Format back to human-readable IDRX amount
         amountToMint = formatUnits(converted, idrxToken.decimals);
       }
 
-      const response = await fetch("/api/idrx/mint-request", {
+      // Call backend endpoint to mint IDRX tokens
+      // The backend will validate the request and execute the mint transaction
+      const backendUrl = process.env.NEXT_PUBLIC_SIGNER_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${backendUrl}/topup-idrx`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amount: amountToMint,
           walletAddress: smartAccountAddress,
-          token: activeToken.symbol.toLowerCase(),
-          chain: config.key,
+          amount: amountToMint, // Amount in IDRX units (e.g., "100.50")
+          chain: config.key, // Chain identifier (e.g., "base_sepolia")
         }),
       });
       const result = await response.json();
-      if (!response.ok || !result?.paymentUrl) {
-        throw new Error(result?.error || "Failed to create payment request.");
+      if (!response.ok) {
+        throw new Error(result?.message || result?.error || "Failed to mint tokens.");
       }
 
-      setPaymentUrl(result.paymentUrl);
-      setReference(result.reference || null);
-      window.open(result.paymentUrl, "_blank", "noopener,noreferrer");
-      setAmount("");
-      await loadHistory();
+      // Display transaction hash in success message
+      // The transaction hash can be used to view the transaction on a block explorer
+      const txHash = result.transactionHash;
+      setPaymentUrl(txHash); // Reuse paymentUrl state to store transaction hash
+      setAmount(""); // Clear input field after successful mint
+      await loadHistory(); // Refresh transaction history
     } catch (err) {
       setErrorModal({
         isOpen: true,
         title: "Top Up Error",
         message:
-          err instanceof Error ? err.message : "Failed to create payment request",
+          err instanceof Error ? err.message : "Failed to mint tokens",
+        onRetry: handleCreatePayment,
       });
     } finally {
       setIsSubmitting(false);
@@ -261,6 +264,10 @@ export default function TopUpIDRX() {
         <p className="text-zinc-400">Connect wallet to top up IDRX</p>
       </div>
     );
+  }
+
+  if (!activeToken) {
+    return null;
   }
 
   return (
@@ -372,33 +379,30 @@ export default function TopUpIDRX() {
           </div>
           <div className="space-y-1 flex-1">
             <p className="text-amber-400 font-semibold text-sm">
-              Direct IDRX API Integration
+              Testnet Faucet Mint
             </p>
             <p className="text-amber-200/80 text-xs leading-relaxed">
-              This top-up connects directly to the official IDRX API. You are
-              purchasing mainnet coin with actual monetary value.
-              Please transact carefully.
+              This top-up mints testnet IDRX tokens directly to your wallet for testing purposes only. 
+              These tokens have no monetary value.
             </p>
           </div>
         </div>
       </div>
 
       {paymentUrl && (
-        <div className="p-4 bg-zinc-800/60 border border-zinc-700 rounded-xl space-y-2">
-          <div className="text-sm text-zinc-200">Payment link created</div>
-          {reference && (
-            <div className="text-xs text-zinc-400">
-              Reference: <span className="font-mono">{reference}</span>
-            </div>
-          )}
-          <button
-            onClick={() =>
-              window.open(paymentUrl, "_blank", "noopener,noreferrer")
-            }
+        <div className="p-4 bg-green-950/30 border border-green-800/50 rounded-xl space-y-2">
+          <div className="text-sm text-green-200 font-semibold">✓ Transaction Successful</div>
+          <div className="text-xs text-green-300/80">
+            Transaction Hash: <span className="font-mono break-all">{paymentUrl}</span>
+          </div>
+          <a
+            href={`${config.blockExplorer.url}/tx/${paymentUrl}`}
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-flex items-center gap-2 text-primary text-sm hover:text-primary/80"
           >
-            Open payment page <ExternalLink className="w-4 h-4" />
-          </button>
+            View on {config.blockExplorer.name} <ExternalLink className="w-4 h-4" />
+          </a>
         </div>
       )}
 
@@ -412,7 +416,7 @@ export default function TopUpIDRX() {
         }
         className="w-full py-3 sm:py-4 bg-primary text-black font-bold text-base sm:text-lg md:text-xl rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {isSubmitting ? "CREATING LINK..." : "TOP UP IDRX"}
+        {isSubmitting ? "MINTING..." : "TOP UP IDRX"}
       </button>
 
       <Modal
@@ -434,9 +438,8 @@ export default function TopUpIDRX() {
             id="confirm-desc"
             className="rounded-lg border border-zinc-700 bg-zinc-900/70 p-3 text-xs text-zinc-300 leading-relaxed"
           >
-            By proceeding, you acknowledge that this will send IDRX/USDC mainnet
-            funds to your Smart Account. Currently Vessel Pay only support Testnet.
-            The Vessel Pay Team is not responsible for any loss.
+            By proceeding, you acknowledge that this will mint testnet IDRX tokens to your Smart Account. 
+            These tokens are for testing purposes only and have no monetary value.
           </div>
           <label className="flex items-start gap-3 text-sm text-zinc-200">
             <input

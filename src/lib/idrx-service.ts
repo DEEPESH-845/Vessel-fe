@@ -86,6 +86,7 @@ export class IDRXService {
   private baseUrl: string;
   private networkChainId: string;
   private networkChainIdEtherlink: string;
+  private isConfigured: boolean;
 
   constructor() {
     this.apiKey = idrxEnv.apiKey;
@@ -93,6 +94,7 @@ export class IDRXService {
     this.baseUrl = idrxEnv.baseUrl;
     this.networkChainId = idrxEnv.networkChainId;
     this.networkChainIdEtherlink = idrxEnv.networkChainIdEtherlink;
+    this.isConfigured = idrxEnv.isConfigured;
   }
 
   private resolveNetworkChainId(chain?: string): string {
@@ -204,6 +206,21 @@ export class IDRXService {
   async getTransactionHistory(
     params: TransactionHistoryParams,
   ): Promise<TransactionHistoryResponse> {
+    // Return empty history if IDRX API is not configured (testnet faucet mode)
+    if (!this.isConfigured) {
+      return {
+        statusCode: 200,
+        message: "Transaction history not available in testnet faucet mode",
+        metadata: {
+          page: params.page,
+          perPage: params.take,
+          pageCount: 0,
+          totalCount: 0,
+        },
+        records: [],
+      };
+    }
+
     const method = "GET";
     const timestamp = generateTimestamp();
 
@@ -276,6 +293,11 @@ export class IDRXService {
     take: number = 10,
     requestType?: string,
   ): Promise<TransactionRecord[]> {
+    // Return empty array if IDRX API is not configured (testnet faucet mode)
+    if (!this.isConfigured) {
+      return [];
+    }
+
     try {
       const history = await this.getTransactionHistory({
         transactionType: "MINT",
