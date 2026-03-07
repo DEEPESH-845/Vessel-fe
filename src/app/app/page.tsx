@@ -19,6 +19,8 @@ import {
   FaucetButton,
 } from "@/components/Wallet";
 import { useSmartAccount } from "@/hooks/useSmartAccount";
+import { CopilotPanel } from "@/components/AI/CopilotPanel";
+import { MerchantDashboardPanel } from "@/components/AI/MerchantDashboardPanel";
 
 const contentComponents = {
   send: SendContent,
@@ -94,6 +96,11 @@ export default function Start() {
             <Menu activeMenu={activeMenu} onMenuChange={handleMenuChange} />
             <ActiveContent />
           </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <CopilotPanel />
+          <MerchantDashboardPanel />
         </div>
       </div>
     </div>

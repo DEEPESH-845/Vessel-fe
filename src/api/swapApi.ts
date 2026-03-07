@@ -15,6 +15,7 @@ export interface SwapQuoteResponse {
   fee: string;
   totalUserPays: string;
   aiAdvisory?: AiRoutingAdvisory;
+  aiIntelligence?: AiSwapIntelligence;
 }
 
 export interface AiRoutingAdvisory {
@@ -34,6 +35,18 @@ export interface BuildSwapCalldataResponse {
   value: string;
   autoRouteApplied?: boolean;
   aiAdvisory?: AiRoutingAdvisory;
+  aiIntelligence?: AiSwapIntelligence;
+}
+
+export interface AiSwapIntelligence {
+  measurableGain: boolean;
+  baselineChain: "base_sepolia" | "etherlink_shadownet";
+  recommendedChain: "base_sepolia" | "etherlink_shadownet";
+  estimatedGainAmountOut: string;
+  estimatedGainBps: number;
+  recommendationStrength: "low" | "medium" | "high";
+  reason: string;
+  modelSource: "deterministic" | "bedrock" | "sagemaker";
 }
 
 export async function fetchSwapQuote(params: {
@@ -88,5 +101,6 @@ export async function buildSwapCalldata(params: {
     value: data.value,
     autoRouteApplied: data.autoRouteApplied,
     aiAdvisory: data.aiAdvisory,
+    aiIntelligence: data.aiIntelligence,
   };
 }

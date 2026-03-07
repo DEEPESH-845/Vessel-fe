@@ -288,6 +288,7 @@ export default function SwapToken() {
     : null;
 
   const advisory = swapQuote?.aiAdvisory;
+  const intelligence = swapQuote?.aiIntelligence;
 
   const advisoryChainLabel = useMemo(() => {
     if (!advisory) return null;
@@ -422,6 +423,19 @@ export default function SwapToken() {
                   : `Guardrails fallback (${advisory.rejectedReason || "validation_failed"})`}
               </div>
               <div className="text-zinc-400">{advisory.reason}</div>
+              {intelligence && (
+                <div className="mt-2 p-2 rounded-md border border-zinc-700 bg-black/30 space-y-1">
+                  <div className="flex justify-between text-zinc-300">
+                    <span>Measurable gain</span>
+                    <span>{intelligence.measurableGain ? "Yes" : "No"}</span>
+                  </div>
+                  <div className="flex justify-between text-zinc-300">
+                    <span>Estimated uplift</span>
+                    <span>{intelligence.estimatedGainBps} bps</span>
+                  </div>
+                  <div className="text-zinc-400">{intelligence.reason}</div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-xs text-zinc-400">
