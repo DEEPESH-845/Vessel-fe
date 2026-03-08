@@ -1,12 +1,3 @@
-import { env } from "@/config/env";
-
-function getSignerApiUrl(): string {
-  if (!env.signerApiUrl) {
-    throw new Error("NEXT_PUBLIC_SIGNER_API_URL is not set");
-  }
-  return env.signerApiUrl;
-}
-
 export interface SignPaymasterRequest {
   payerAddress: string;
   tokenAddress: string;
@@ -22,19 +13,13 @@ export interface SignPaymasterResponse {
 export async function getPaymasterSignature(
   params: SignPaymasterRequest
 ): Promise<string> {
-  const signerApiUrl = getSignerApiUrl();
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-  if (env.edgeSignApiKey) {
-    headers["x-api-key"] = env.edgeSignApiKey;
-  }
-
   let response: Response;
   try {
-    response = await fetch(`${signerApiUrl}/sign`, {
+    response = await fetch(`/api/sign`, {
       method: "POST",
-      headers,
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
         payerAddress: params.payerAddress,
         tokenAddress: params.tokenAddress,
@@ -45,9 +30,7 @@ export async function getPaymasterSignature(
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "network error";
-    throw new Error(
-      `Signer API unreachable at ${signerApiUrl}/sign (${message})`
-    );
+    throw new Error(`Signer API proxy unreachable at /api/sign (${message})`);
   }
 
   if (!response.ok) {
@@ -61,8 +44,7 @@ export async function getPaymasterSignature(
 
 export async function getSignerAddress(): Promise<string | null> {
   try {
-    const signerApiUrl = getSignerApiUrl();
-    const response = await fetch(`${signerApiUrl}/signer`);
+    const response = await fetch(`/api/signer`);
     if (!response.ok) return null;
     const data = await response.json();
     return data.signerAddress as string;

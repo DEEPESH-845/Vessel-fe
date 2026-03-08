@@ -36,6 +36,43 @@ export type MerchantDashboardResponse = {
     insight: string;
 };
 
+export type RiskAssessmentResponse = {
+    chain: "base_sepolia" | "etherlink_shadownet";
+    chainId: number;
+    risk: {
+        score: number;
+        level: "low" | "medium" | "high" | "critical";
+        allowSponsoredGas: boolean;
+        reasons: string[];
+        recommendedAction: "allow" | "review" | "block";
+    };
+    explanation: string;
+};
+
+export type KiroPlanResponse = {
+    ok: boolean;
+    plan: {
+        mode: "kiro";
+        summary: string;
+        steps: Array<{
+            id: string;
+            title: string;
+            outcome: string;
+        }>;
+    };
+};
+
+export type AgentcoreSessionResponse = {
+    ok: boolean;
+    provider: "bedrock-agentcore" | "bedrock-agentcore-fallback";
+    configured?: boolean;
+    result: {
+        sessionId: string;
+        outputText: string;
+    };
+    fallbackPlan?: CopilotPlan;
+};
+
 export async function fetchCopilotPlan(prompt: string): Promise<CopilotPlan> {
     const res = await fetch(`${getApiUrl()}/ai/copilot`, {
         method: "POST",
@@ -63,4 +100,67 @@ export async function fetchMerchantDashboard(
     }
 
     return (await res.json()) as MerchantDashboardResponse;
+}
+
+export async function fetchRiskAssessment(params: {
+    payerAddress: string;
+    tokenAddress: string;
+    isActivation?: boolean;
+    chainId?: number;
+}): Promise<RiskAssessmentResponse> {
+    const url = new URL(`${getApiUrl()}/risk/assess`);
+    if (params.chainId) {
+        url.searchParams.set("chainId", String(params.chainId));
+    }
+
+    const res = await fetch(url.toString(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            payerAddress: params.payerAddress,
+            tokenAddress: params.tokenAddress,
+            isActivation: params.isActivation ?? false,
+        }),
+    });
+
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: "risk assessment failed" }));
+        throw new Error(err.message || "risk assessment failed");
+    }
+
+    return (await res.json()) as RiskAssessmentResponse;
+}
+
+export async function fetchKiroPlan(goal: string, context?: Record<string, unknown>) {
+    const res = await fetch(`${getApiUrl()}/ai/kiro/plan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ goal, ...(context ? { context } : {}) }),
+    });
+
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: "kiro plan failed" }));
+        throw new Error(err.message || "kiro plan failed");
+    }
+
+    return (await res.json()) as KiroPlanResponse;
+}
+
+export async function fetchAgentcoreSession(input: {
+    inputText: string;
+    sessionId?: string;
+    userId?: string;
+}): Promise<AgentcoreSessionResponse> {
+    const res = await fetch(`${getApiUrl()}/ai/agentcore/session`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+    });
+
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: "agentcore session failed" }));
+        throw new Error(err.message || "agentcore session failed");
+    }
+
+    return (await res.json()) as AgentcoreSessionResponse;
 }

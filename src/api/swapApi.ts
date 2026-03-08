@@ -20,7 +20,7 @@ export interface SwapQuoteResponse {
 
 export interface AiRoutingAdvisory {
   enabled: boolean;
-  source: "deterministic" | "bedrock" | "sagemaker";
+  source: "deterministic" | "bedrock";
   selectedChain: "base_sepolia" | "etherlink_shadownet";
   confidence: number;
   reason: string;
@@ -46,7 +46,7 @@ export interface AiSwapIntelligence {
   estimatedGainBps: number;
   recommendationStrength: "low" | "medium" | "high";
   reason: string;
-  modelSource: "deterministic" | "bedrock" | "sagemaker";
+  modelSource: "deterministic" | "bedrock";
 }
 
 export async function fetchSwapQuote(params: {

@@ -236,28 +236,21 @@ export default function TopUpIDRX() {
         amountToMint = formatUnits(converted, idrxToken.decimals);
       }
 
-      // Call backend endpoint to mint IDRX tokens
-      // The backend will validate the request and execute the mint transaction
-      const backendUrl = env.signerApiUrl || "http://localhost:3001";
+      // Call app proxy endpoint; server-side route adds the protected API key.
       const idempotencyKey =
         typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
           ? crypto.randomUUID()
           : `topup-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-        "Idempotency-Key": idempotencyKey,
-      };
-      if (env.edgeTopupApiKey) {
-        headers["x-api-key"] = env.edgeTopupApiKey;
-      }
-
-      const response = await fetch(`${backendUrl}/topup-idrx`, {
+      const response = await fetch(`/api/topup-idrx`, {
         method: "POST",
-        headers,
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           walletAddress: normalizedWalletAddress,
           amount: amountToMint, // Amount in IDRX units (e.g., "100.50")
           chain: config.key, // Chain identifier (e.g., "base_sepolia")
+          idempotencyKey,
         }),
       });
       const result = await response.json();
